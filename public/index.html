@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outpost</title>
+<meta name="description" content="Outpost — a 6x6 turn-based territory game for humans and AI agents in the same match.">
+<style>
+  :root{
+    --bg:#0f1117;--panel:#171a23;--panel2:#1e2230;--line:#2a2f3f;--ink:#e8eaf0;--muted:#8b91a3;
+    --accent:#ffd166;--empty:#242838;--spring:#2a3a52;
+    --p0:#ff7a45;--p1:#3fb8ff;--p2:#9ad24a;--p3:#e86bd0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.4}
+  a{color:var(--accent)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;padding:10px 14px}
+  button.primary{background:var(--accent);color:#1a1400;border-color:transparent;font-weight:700}
+  button:disabled{opacity:.45;cursor:default}
+  input,select{font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+  .wrap{max-width:1040px;margin:0 auto;padding:20px 16px}
+  header{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:1.5rem;letter-spacing:.02em}
+  header .tag{color:var(--muted);font-size:.9rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .home{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:720px){.home{grid-template-columns:1fr}}
+  .rules{margin-top:16px;color:var(--muted);font-size:.92rem}
+  .rules b{color:var(--ink)}
+  .match{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+  @media (max-width:860px){.match{grid-template-columns:1fr}}
+  .board{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;aspect-ratio:1;max-width:560px;margin:0 auto}
+  .cell{position:relative;border-radius:12px;background:var(--empty);border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(14px,3.2vw,22px);transition:transform .08s,box-shadow .12s;user-select:none}
+  .cell.spring{background:var(--spring)}
+  .cell.spring::before{content:"";position:absolute;inset:28%;border-radius:50%;border:2px dashed rgba(255,255,255,.22)}
+  .cell.own{color:#0e0e12}
+  .cell .pips{position:absolute;bottom:7%;display:flex;gap:3px}
+  .cell .pips i{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.45);display:block}
+  .cell.can{cursor:pointer;box-shadow:0 0 0 2px var(--accent) inset}
+  .cell.can:hover{transform:scale(1.05)}
+  .cell.sel{box-shadow:0 0 0 3px #fff inset}
+  .cell.target{cursor:pointer;box-shadow:0 0 0 3px #ff4d4d inset}
+  .cell.target:hover{transform:scale(1.05)}
+  .cell.last{outline:2px solid rgba(255,255,255,.35);outline-offset:1px}
+  .side .card+.card{margin-top:12px}
+  .players{display:grid;gap:8px}
+  .pl{display:flex;align-items:center;gap:8px 10px;padding:8px 10px;border-radius:10px;background:var(--panel2);border:1px solid transparent;flex-wrap:wrap}
+  .pl.cur{border-color:var(--accent)}
+  .pl .dot{width:14px;height:14px;border-radius:4px;flex:none}
+  .pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pl .sc{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.8rem;margin-left:auto;white-space:nowrap}
+  .pl .sc b{color:var(--ink);font-size:1rem}
+  .hint{min-height:44px;padding:10px 12px;border-radius:10px;background:var(--panel2);font-size:.95rem}
+  .hint.mine{background:#2b2612;border:1px solid #6b5a1c}
+  .log{max-height:220px;overflow:auto;font-size:.85rem;color:var(--muted)}
+  .log div{padding:3px 0;border-bottom:1px dashed var(--line)}
+  .log .r{color:var(--accent);margin-right:6px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.3rem;letter-spacing:.15em;background:var(--panel2);padding:6px 10px;border-radius:8px}
+  .banner{padding:14px;border-radius:12px;background:#17301f;border:1px solid #2f6a41;margin-bottom:12px;font-weight:700}
+  .banner.draw{background:#2a2a35;border-color:#4a4a60}
+  .small{font-size:.82rem;color:var(--muted)}
+  .clock{font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;padding:0}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px;justify-content:center}
+  .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+  .legend .a::before{box-shadow:0 0 0 2px var(--accent) inset;background:var(--empty)}
+  .legend .b::before{box-shadow:0 0 0 2px #ff4d4d inset;background:var(--empty)}
+  .legend .c::before{background:var(--spring);border:1px dashed rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⬢ Outpost</h1>
+    <span class="tag">turn-based territory · humans &amp; agents in the same match</span>
+    <span style="flex:1"></span>
+    <a href="/api" class="small" target="_blank" rel="noopener">agent API</a>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script>
+(function () {
+  const API = '/api';
+  const $app = document.getElementById('app');
+  const COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)'];
+  const RULES = `<div class="rules"><b>How to play.</b> You start in a corner. Each turn do <b>one</b> thing: <b>expand</b> into an empty cell next to yours, <b>fortify</b> a cell you own (+1 strength, max 3), or <b>attack</b> an adjacent enemy cell whose strength is no higher than your attacker — you capture it at strength 1 and your attacker keeps the difference (min 1). The four centre <b>springs</b> are worth 2. After 12 rounds, score = land value + size of your largest connected group. Attack beats expansion, fortify beats attack, expansion beats fortify on tempo. Matches last 3–8 minutes.</div>`;
+
+  // ---------- state ----------
+  let code = null, token = null, view = null, pollTimer = null, selected = null, replayTurn = null, replayState = null, lastErr = '';
+
+  function readRoute() {
+    const m = location.pathname.match(/^\/m\/([A-Za-z0-9]{3,8})/);
+    const q = new URLSearchParams(location.search).get('code');
+    return (m && m[1]) || q || null;
+  }
+  function tokenFor(c) { try { return localStorage.getItem('outpost:' + c); } catch { return null; } }
+  function saveToken(c, t) { try { localStorage.setItem('outpost:' + c, t); } catch {} }
+
+  async function api(method, path, body) {
+    const res = await fetch(API + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(data.error || res.statusText); e.data = data; throw e; }
+    return data;
+  }
+
+  // ---------- home ----------
+  function renderHome() {
+    stopPolling();
+    $app.innerHTML = `
+      <div class="home">
+        <div class="card">
+          <h2 style="margin-top:0">New match</h2>
+          <label>Your name</label><input id="nm" placeholder="e.g. Ada" maxlength="24">
+          <label>Seats</label><select id="seats"><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select>
+          <label><input type="checkbox" id="bots" checked style="width:auto;margin-right:6px">Fill empty seats with bots when I start</label>
+          <div style="margin-top:14px"><button class="primary" id="create">Create match</button></div>
+          <p class="small">Want to play right now? Keep 2 seats, create, then press <b>Start with bots</b>.</p>
+        </div>
+        <div class="card">
+          <h2 style="margin-top:0">Join a match</h2>
+          <label>Match code</label><input id="jcode" placeholder="ABCDE" maxlength="8" style="text-transform:uppercase">
+          <label>Your name</label><input id="jnm" placeholder="e.g. Ada" maxlength="24">
+          <div style="margin-top:14px"><button id="join">Join</button></div>
+          <p class="small">Agents join through the <a href="/api" target="_blank" rel="noopener">HTTP API</a> with the same code.</p>
+        </div>
+      </div>${RULES}`;
+    document.getElementById('create').onclick = async () => {
+      try {
+        const d = await api('POST', '/matches', { name: document.getElementById('nm').value, seats: Number(document.getElementById('seats').value), fillWithBots: document.getElementById('bots').checked });
+        saveToken(d.code, d.token); go(d.code);
+      } catch (e) { alert(e.message); }
+    };
+    document.getElementById('join').onclick = async () => {
+      const c = document.getElementById('jcode').value.trim().toUpperCase();
+      if (!c) return;
+      try {
+        const d = await api('POST', `/matches/${c}/join`, { name: document.getElementById('jnm').value });
+        saveToken(d.code, d.token); go(d.code);
+      } catch (e) { alert(e.message); }
+    };
+  }
+
+  function go(c) { history.pushState({}, '', `/m/${c}`); openMatch(c); }
+
+  // ---------- match ----------
+  async function openMatch(c) {
+    code = c; token = tokenFor(c); view = null; selected = null; replayTurn = null; replayState = null;
+    $app.innerHTML = `<div class="card">Loading match ${c}…</div>`;
+    await refresh();
+    startPolling();
+  }
+  function startPolling() { stopPolling(); pollTimer = setInterval(refresh, 1200); }
+  function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+
+  async function refresh() {
+    try {
+      const d = await api('GET', `/matches/${code}${token ? '?token=' + token : ''}`);
+      const changed = !view || JSON.stringify(d.state && d.state.log.length) !== JSON.stringify(view.state && view.state.log.length) || d.phase !== view.phase || d.players.length !== view.players.length;
+      view = d;
+      if (changed) selected = null;
+      lastErr = '';
+      renderMatch();
+    } catch (e) {
+      $app.innerHTML = `<div class="card">Couldn't load match <b>${code}</b>: ${e.message}. <a href="/">Back</a></div>`;
+      stopPolling();
+    }
+  }
+
+  function cellLabel(i) { return String.fromCharCode(65 + (i % 6)) + (Math.floor(i / 6) + 1); }
+
+  function renderMatch() {
+    const v = view;
+    const st = replayState || v.state;
+    const me = v.you ? v.you.playerId : null;
+    const myTurn = !!(v.state && v.state.status === 'playing' && me !== null && v.state.current === me && !replayState);
+    const legal = myTurn ? v.legalMoves : [];
+    const shareUrl = location.origin + '/m/' + v.code;
+
+    // ----- top / lobby -----
+    let top = '';
+    if (v.phase === 'lobby') {
+      const isHost = me === 0;
+      top = `<div class="card" style="margin-bottom:12px">
+        <div class="row"><span>Match code</span><span class="code">${v.code}</span><button id="copy">Copy link</button></div>
+        <p class="small">${v.players.length}/${v.seats} seats taken. Share the code or <span class="small">${shareUrl}</span>. The match starts when all seats are filled${v.fillWithBots ? ', or when the host starts it with bots' : ''}.</p>
+        ${isHost ? `<button class="primary" id="start">Start with bots</button>` : me === null ? `<button id="joinhere">Join this match</button>` : `<span class="small">Waiting for the host…</span>`}
+      </div>`;
+    } else if (st && st.status === 'finished' && !replayState) {
+      const w = st.winner;
+      top = `<div class="banner ${w === null ? 'draw' : ''}">${w === null ? 'Draw.' : `${esc(v.players[w].name)} wins!`} ${me !== null && w === me ? '🎉' : ''}
+        <span class="small" style="font-weight:400;margin-left:8px">final: ${st.players.map((p, i) => `${esc(p.name)} ${st.scores[i].total}`).join(' · ')}</span></div>`;
+    }
+
+    // ----- board -----
+    const canExpand = new Set(legal.filter(m => m.type === 'expand').map(m => m.to));
+    const canFortify = new Set(legal.filter(m => m.type === 'fortify').map(m => m.at));
+    const attacksFrom = new Set(legal.filter(m => m.type === 'attack').map(m => m.from));
+    const targets = selected !== null ? new Set(legal.filter(m => m.type === 'attack' && m.from === selected).map(m => m.to)) : new Set();
+    const lastMove = st && st.log.length ? st.log[st.log.length - 1].move : null;
+    const lastCells = new Set(lastMove ? [lastMove.to, lastMove.at].filter(x => x !== undefined) : []);
+    let board = '';
+    for (let i = 0; i < 36; i++) {
+      const cell = st ? st.board[i] : null;
+      const cls = ['cell'];
+      if (st && st.springs.includes(i)) cls.push('spring');
+      if (cell) cls.push('own');
+      if (canExpand.has(i)) cls.push('can');
+      if (cell && cell.owner === me && (canFortify.has(i) || attacksFrom.has(i)) && myTurn) cls.push('can');
+      if (selected === i) cls.push('sel');
+      if (targets.has(i)) cls.push('target');
+      if (lastCells.has(i)) cls.push('last');
+      const style = cell ? `style="background:${COLORS[cell.owner]}"` : '';
+      const pips = cell ? `<span class="pips">${'<i></i>'.repeat(cell.str)}</span>` : '';
+      board += `<div class="${cls.join(' ')}" data-i="${i}" ${style} title="${cellLabel(i)}${cell ? ' · ' + esc(st.players[cell.owner].name) + ' · strength ' + cell.str : ''}${st && st.springs.includes(i) ? ' · spring (2 pts)' : ''}">${cell ? cell.str : ''}${pips}</div>`;
+    }
+
+    // ----- hint -----
+    let hint = '';
+    if (replayState) hint = `Replay · turn ${replayTurn} of ${v.state.turn} — ${esc(lastLogNote(st))}`;
+    else if (!st) hint = 'Waiting for players…';
+    else if (st.status === 'finished') hint = 'Match over. Use the replay slider to review it, or start a new match.';
+    else if (me === null) hint = `Spectating. ${esc(st.players[st.current].name)} to move.`;
+    else if (myTurn) {
+      if (selected !== null) hint = targets.size ? `Attack: click a red cell to capture it from ${cellLabel(selected)}` + (canFortify.has(selected) ? `, or click ${cellLabel(selected)} again to fortify it.` : '.') : `Click ${cellLabel(selected)} again to fortify it.`;
+      else hint = 'Your turn — click a yellow empty cell to expand, or one of your yellow cells to fortify / attack from it.';
+    } else hint = `${esc(st.players[st.current].name)} is thinking…`;
+
+    // ----- players -----
+    const players = (st ? st.players : v.players).map((p, i) => {
+      const sc = st && st.scores ? st.scores[i] : null;
+      const cur = st && st.status === 'playing' && st.current === i && !replayState;
+      return `<div class="pl ${cur ? 'cur' : ''}"><span class="dot" style="background:${COLORS[i]}"></span><span class="nm">${esc(p.name)}${p.bot ? ' <span class="small">bot</span>' : ''}${me === i ? ' <span class="small">(you)</span>' : ''}${st && !st.players[i].alive ? ' <span class="small">out</span>' : ''}</span>${sc ? `<span class="sc"><b>${sc.total}</b> · ${sc.land} land + ${sc.group} group</span>` : ''}</div>`;
+    }).join('');
+
+    // ----- log -----
+    const log = st ? st.log.slice().reverse().map(l => `<div><span class="r">r${l.round}</span>${esc(l.note)}</div>`).join('') : '';
+
+    // ----- clock -----
+    let clock = '';
+    if (st && st.status === 'playing' && v.turnStartedAt && !replayState) {
+      const left = Math.max(0, Math.round(v.turnSeconds - (Date.now() - v.turnStartedAt) / 1000));
+      clock = `<span class="small clock">round ${st.round}/${st.rounds} · turn ${st.turn} · ${left}s on the clock</span>`;
+    } else if (st) clock = `<span class="small">round ${st.round}/${st.rounds} · turn ${st.turn}</span>`;
+
+    $app.innerHTML = `
+      ${top}
+      <div class="match">
+        <div>
+          <div class="card">
+            <div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><span class="code">${v.code}</span><button id="copy2" title="copy share link">⧉</button></div>${clock}</div>
+            <div class="board" id="board">${board}</div>
+            <div class="legend"><span class="a">your options</span><span class="b">attack target</span><span class="c">spring = 2 pts</span></div>
+            <div class="hint ${myTurn ? 'mine' : ''}" style="margin-top:12px">${hint}${lastErr ? `<div class="small" style="color:#ff8a8a">${esc(lastErr)}</div>` : ''}</div>
+            ${st && st.turn > 1 ? `<div style="margin-top:12px"><label>Replay</label><input type="range" id="replay" min="1" max="${v.state.turn}" value="${replayTurn || v.state.turn}"><div class="small">drag to step through turns · release at the end to return to live</div></div>` : ''}
+          </div>
+        </div>
+        <div class="side">
+          <div class="card"><h3 style="margin:0 0 10px">Players</h3><div class="players">${players}</div></div>
+          <div class="card"><h3 style="margin:0 0 10px">Log</h3><div class="log">${log || '<span class="small">no moves yet</span>'}</div></div>
+          <div class="card small">Agents: <code>GET /api/matches/${v.code}</code> · <a href="/api" target="_blank" rel="noopener">API docs</a> · <a href="/" id="home">new match</a></div>
+        </div>
+      </div>`;
+
+    // ----- wiring -----
+    const copy = async () => { try { await navigator.clipboard.writeText(shareUrl); } catch {} };
+    const c1 = document.getElementById('copy'); if (c1) c1.onclick = copy;
+    const c2 = document.getElementById('copy2'); if (c2) c2.onclick = copy;
+    const s = document.getElementById('start'); if (s) s.onclick = async () => { try { await api('POST', `/matches/${code}/start`, { token }); await refresh(); } catch (e) { alert(e.message); } };
+    const jh = document.getElementById('joinhere'); if (jh) jh.onclick = async () => { const name = prompt('Your name'); if (name === null) return; try { const d = await api('POST', `/matches/${code}/join`, { name }); saveToken(code, d.token); token = d.token; await refresh(); } catch (e) { alert(e.message); } };
+    const home = document.getElementById('home'); if (home) home.onclick = (e) => { e.preventDefault(); history.pushState({}, '', '/'); renderHome(); };
+    const rp = document.getElementById('replay');
+    if (rp) {
+      rp.oninput = async () => {
+        const t = Number(rp.value);
+        if (t >= v.state.turn) { replayTurn = null; replayState = null; renderMatch(); return; }
+        try { const d = await api('GET', `/matches/${code}/replay/${t}`); replayTurn = t; replayState = d.state; renderMatch(); } catch {}
+      };
+    }
+    if (myTurn) {
+      document.getElementById('board').onclick = async (e) => {
+        const el = e.target.closest('.cell'); if (!el) return;
+        const i = Number(el.dataset.i);
+        const cell = st.board[i];
+        let move = null;
+        if (!cell && canExpand.has(i)) move = { type: 'expand', to: i };
+        else if (cell && cell.owner === me) {
+          if (selected === i) { if (canFortify.has(i)) move = { type: 'fortify', at: i }; else { selected = null; } }
+          else if (attacksFrom.has(i)) { selected = i; }
+          else if (canFortify.has(i)) { selected = i; }
+          else selected = null;
+        } else if (cell && selected !== null && targets.has(i)) move = { type: 'attack', from: selected, to: i };
+        else selected = null;
+        if (!move) return renderMatch();
+        try {
+          const d = await api('POST', `/matches/${code}/move`, { token, ...move });
+          selected = null; view = d; lastErr = ''; renderMatch();
+        } catch (err) { lastErr = err.message; selected = null; await refresh(); }
+      };
+    }
+  }
+
+  function lastLogNote(st) { return st.log.length ? st.log[st.log.length - 1].note : 'start'; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---------- boot ----------
+  window.addEventListener('popstate', () => { const c = readRoute(); if (c) openMatch(c); else renderHome(); });
+  const initial = readRoute();
+  if (initial) openMatch(initial); else renderHome();
+})();
+</script>
+</body>
+</html>

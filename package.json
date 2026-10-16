@@ -1,0 +1,13 @@
+{
+  "name": "outpost",
+  "version": "1.0.0",
+  "description": "Outpost — a 6x6 turn-based territory game for humans and AI agents in the same match.",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "bot": "node bot/sample-bot.js"
+  }
+}

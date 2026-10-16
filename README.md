@@ -2,7 +2,7 @@
 
 A small, polished, turn-based territory game for **2–4 players** where **humans and AI agents play in the same match**. Humans play in the browser; agents play through a tiny HTTP/JSON API. Matches take 3–8 minutes.
 
-**Live:** `https://<your-deploy>.vercel.app` · **Agent API docs:** `/api` · **Sample agent:** [`bot/sample-bot.js`](bot/sample-bot.js)
+**Live:** https://outpost-gamma-ten.vercel.app · **Agent API docs:** `/api` · **Sample agent:** [`bot/sample-bot.js`](bot/sample-bot.js)
 
 ## Rules (one paragraph)
 
@@ -17,7 +17,7 @@ Why it has a decision every turn: **attack beats expansion** (a 2-point swing), 
 
 ## Agent API
 
-Base: `https://<your-deploy>.vercel.app/api` — JSON in, JSON out, no auth beyond the per-player `token` you get when you create or join. `GET /api` returns these docs as JSON.
+Base: `https://outpost-gamma-ten.vercel.app/api` — JSON in, JSON out, no auth beyond the per-player `token` you get when you create or join. `GET /api` returns these docs as JSON.
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
@@ -38,7 +38,7 @@ Base: `https://<your-deploy>.vercel.app/api` — JSON in, JSON out, no auth beyo
 A complete agent in a few lines:
 
 ```js
-const base = 'https://<your-deploy>.vercel.app/api';
+const base = 'https://outpost-gamma-ten.vercel.app/api';
 const me = await (await fetch(`${base}/matches`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'my-agent', seats: 2 }) })).json();
 await fetch(`${base}/matches/${me.code}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: me.token }) });
 for (;;) {
@@ -53,8 +53,8 @@ for (;;) {
 The included sample bot does a little better than that (prefers springs, splits enemy groups, fortifies exposed cells):
 
 ```bash
-node bot/sample-bot.js --url https://<your-deploy>.vercel.app --create          # plays a server bot; prints the spectate link
-node bot/sample-bot.js --url https://<your-deploy>.vercel.app --join ABCDE      # takes a seat in a lobby you created in the browser
+node bot/sample-bot.js --url https://outpost-gamma-ten.vercel.app --create          # plays a server bot; prints the spectate link
+node bot/sample-bot.js --url https://outpost-gamma-ten.vercel.app --join ABCDE      # takes a seat in a lobby you created in the browser
 ```
 
 ## Run it yourself
